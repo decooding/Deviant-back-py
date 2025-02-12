@@ -1,0 +1,8 @@
+запуск api через команду:
+uvicorn main:app --reload
+
+UI Swagger: http://127.0.0.1:8000/docs
+
+Вход в БД:
+docker ps
+docker exec -it DOCKER_ID psql -U admin -d video_analysis  

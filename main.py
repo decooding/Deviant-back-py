@@ -1,7 +1,14 @@
 from fastapi import FastAPI
-import psycopg2
+from database import engine, Base
+import routers.alerts
 
 app = FastAPI()
+
+# Создаем таблицы в БД (если их нет)
+Base.metadata.create_all(bind=engine)
+
+# Подключаем роуты
+app.include_router(routers.alerts.router)
 
 
 @app.get("/")
