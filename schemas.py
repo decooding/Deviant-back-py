@@ -1,15 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
-class AlertCreate(BaseModel):
+class AlertBase(BaseModel):
     type: str
     description: str
 
 
-class AlertResponse(AlertCreate):
+class AlertCreate(AlertBase):
+    """📌 Используется при создании тревоги (POST /alerts/)"""
+
+    pass
+
+
+class AlertResponse(AlertBase):
+    """📌 Используется для ответа API (GET /alerts/, GET /alerts/{id})"""
+
     id: int
     timestamp: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
