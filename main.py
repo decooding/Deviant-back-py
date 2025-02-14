@@ -1,34 +1,25 @@
-import logging
 from fastapi import FastAPI
-from database import engine, Base
-import routers.alerts
 from prometheus_fastapi_instrumentator import Instrumentator
+from routers import alerts, videos
+from utils.logger import logger
+#from routers import alerts, users  # ✅ Импортируем users.py
 
-# 🔹 Настройка логирования
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-app = FastAPI()
-
-# Создание таблиц в БД (если их нет)
-Base.metadata.create_all(bind=engine)
-
-# Подключение API-роутов
-app.include_router(routers.alerts.router)
-
-# 🔹 Подключаем мониторинг Prometheus
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-
-# @app.middleware("http")
-# async def log_requests(request, call_next):
-#     logger.info(f"Запрос: {request.method} {request.url}")
-#     response = await call_next(request)
-#     logger.info(f"Ответ: {response.status_code}")
-#     return response
+app = FastAPI(title="Deviant Behavior Detection API", version="1.0.0")
 
 
 @app.get("/")
 def read_root():
     return {"message": "API is working!"}
+
+
+# Подключаем Prometheus для мониторинга
+Instrumentator().instrument(app).expose(app)
+
+
+# Подключаем роутеры
+app.include_router(alerts.router)
+app.include_router(videos.router)
+# app.include_router(users.router)
+
+# Логируем запуск API
+logger.info("🚀 FastAPI сервер запущен!")

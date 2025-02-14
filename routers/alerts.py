@@ -1,37 +1,28 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import Optional
-from datetime import datetime
-import schemas
 from database import get_db
-from services import alerts as alert_service  # ✅ Импортируем сервис
+from services import alerts as alert_service
+from schemas import AlertCreate, AlertResponse
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
 
-@router.post("/", response_model=schemas.AlertResponse)
-def create_alert(alert: schemas.AlertCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=AlertResponse)
+def create_alert(alert: AlertCreate, db: Session = Depends(get_db)):
     return alert_service.create_alert(db, alert)
 
 
-@router.get("/", response_model=list[schemas.AlertResponse])
+@router.get("/", response_model=list[AlertResponse])
 def read_alerts(
-    type: Optional[str] = None,
-    from_date: Optional[datetime] = None,
-    to_date: Optional[datetime] = None,
-    limit: int = 10,
-    offset: int = 0,
-    sort_desc: bool = True,
-    db: Session = Depends(get_db),
+    type: str = None, limit: int = 10, offset: int = 0, db: Session = Depends(get_db)
 ):
-    return alert_service.get_alerts(
-        db, type, from_date, to_date, limit, offset, sort_desc
-    )
+    return alert_service.get_alerts(db, type, limit, offset)
 
 
-@router.put("/{alert_id}", response_model=schemas.AlertResponse)
+@router.put("/{alert_id}", response_model=AlertResponse)
 def update_alert(
-    alert_id: int, updated_alert: schemas.AlertCreate, db: Session = Depends(get_db)
+    alert_id: int, updated_alert: AlertCreate, db: Session = Depends(get_db)
 ):
     return alert_service.update_alert(db, alert_id, updated_alert)
 

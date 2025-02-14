@@ -14,6 +14,8 @@ docker run -d --name prometheus -p 9090:9090 -v "D:/Github/Deviant-back-py/prome
 
 Запусти Grafana:
 docker run -d --name grafana -p 3000:3000 grafana/grafana
+docker start grafana
+http://localhost:3000
 
 Очистка кэшов 
 Remove-Item -Recurse -Force __pycache__, tests\__pycache__
