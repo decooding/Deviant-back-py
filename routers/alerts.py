@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from services import alerts as alert_service
 from schemas import AlertCreate, AlertResponse
-from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 

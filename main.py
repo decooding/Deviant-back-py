@@ -2,7 +2,14 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from routers import alerts, videos
 from utils.logger import logger
-#from routers import alerts, users  # ✅ Импортируем users.py
+
+# from routers import alerts, users  # ✅ Импортируем users.py
+
+from database import Base, engine
+import models
+
+Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI(title="Deviant Behavior Detection API", version="1.0.0")
 
