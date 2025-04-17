@@ -8,3 +8,8 @@ minio
 ultralytics
 opencv-python-headless
 prometheus_fastapi_instrumentator
+torch
+torchvision
+tqdm
+opencv-python-headless
+transformers

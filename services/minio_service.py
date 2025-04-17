@@ -1,41 +1,50 @@
-from minio import Minio
 import os
 import uuid
+import logging
+from minio import Minio
 
-# Загружаем параметры из переменных окружения
+# Логирование
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Конфигурация из переменных окружения
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER", "minioadmin")
-MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
+MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "password")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "videos")
-MINIO_SECURE = os.getenv("MINIO_SECURE", "False").lower() == "true"
 
-# Инициализируем клиента MinIO
-minio_client = Minio(
+# Инициализация клиента MinIO
+client = Minio(
     MINIO_ENDPOINT,
-    access_key=MINIO_ROOT_USER,
-    secret_key=MINIO_ROOT_PASSWORD,
-    secure=MINIO_SECURE,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=False,
 )
 
-# Создаём бакет, если не существует
-if not minio_client.bucket_exists(BUCKET_NAME):
-    minio_client.make_bucket(BUCKET_NAME)
+# Проверка и создание бакета
+try:
+    if not client.bucket_exists(BUCKET_NAME):
+        client.make_bucket(BUCKET_NAME)
+        logger.info(f"🪣 MinIO: Бакет `{BUCKET_NAME}` создан")
+    else:
+        logger.info(f"✅ MinIO: Бакет `{BUCKET_NAME}` уже существует")
+except Exception as e:
+    logger.error(f"❌ Ошибка подключения к MinIO: {str(e)}")
 
 
-def upload_to_minio(local_file_path: str) -> str:
-    """
-    Загружает локальный файл в MinIO и возвращает имя объекта.
-    """
-    object_name = os.path.basename(local_file_path)
-    minio_client.fput_object(BUCKET_NAME, object_name, local_file_path)
-    return object_name
-
-
+# 📥 Функция скачивания файла из MinIO
 def download_from_minio(object_name: str) -> str:
     """
-    Скачивает файл из MinIO во временную папку и возвращает путь.
+    Скачивает объект object_name из MinIO и сохраняет его во временную директорию.
+    Возвращает путь к локальному файлу.
     """
     os.makedirs("temp", exist_ok=True)
     local_path = os.path.join("temp", f"{uuid.uuid4()}_{object_name}")
-    minio_client.fget_object(BUCKET_NAME, object_name, local_path)
-    return local_path
+
+    try:
+        client.fget_object(BUCKET_NAME, object_name, local_path)
+        logger.info(f"⬇️ Видео {object_name} скачано в {local_path}")
+        return local_path
+    except Exception as e:
+        logger.error(f"❌ Ошибка при скачивании {object_name} из MinIO: {str(e)}")
+        raise
