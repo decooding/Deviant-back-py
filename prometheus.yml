@@ -1,4 +1,7 @@
+global:
+  scrape_interval: 15s
+
 scrape_configs:
-  - job_name: "fastapi"
+  - job_name: "fastapi-app"
     static_configs:
-      - targets: ["host.docker.internal:8000"] # или "localhost:8000", если без Docker
+      - targets: ["host.docker.internal:8000"]

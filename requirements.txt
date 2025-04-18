@@ -8,8 +8,11 @@ minio
 ultralytics
 opencv-python-headless
 prometheus_fastapi_instrumentator
+prometheus_client
 torch
 torchvision
 tqdm
-opencv-python-headless
 transformers
+ultralytics==8.0.170
+pandas
+numpy

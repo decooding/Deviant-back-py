@@ -1,42 +1,30 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.orm import Session
+from services.minio_service import download_from_minio
+from database import get_db
+from schemas import AlertCreate
+from services.alerts import create_alert
+from utils.logger import logger
+from ml.pipeline import analyze_video_pipeline
 import shutil
 import os
-import time
-import random
-from sqlalchemy.orm import Session
-from services import alerts as alert_service
-from database import get_db
-from utils.logger import logger
-from schemas import AlertCreate  # ✅ Добавляем импорт схемы
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from database import get_db
-from services.minio_service import download_from_minio
-from ml.video_processing import analyze_video
 
-# Создаем роутер
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
-# Директория для загрузки
 UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # Создаем папку, если нет
-
-# Допустимые форматы видео
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv"}
 
 
 @router.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
-    """📥 Загрузка видеофайла"""
-
-    # Проверяем расширение файла
+    """📥 Загрузка видео в локальную папку"""
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="❌ Недопустимый формат файла!")
 
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
-    # Сохраняем видео
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -50,14 +38,25 @@ async def upload_video(file: UploadFile = File(...)):
 
 
 @router.post("/analyze")
-def analyze_uploaded_video(
-    video_filename: str,
-    skip: int = 5,
-    db: Session = Depends(get_db),
-):
+def analyze(video_filename: str, db: Session = Depends(get_db)):
+    """
+    🎬 Анализ видео:
+    - скачивает из MinIO
+    - применяет YOLOv8 + MoViNet
+    - вызывает тревогу при девиации
+    """
     try:
-        video_path = download_from_minio(video_filename)
+        local_path = download_from_minio(video_filename)
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Ошибка загрузки: {str(e)}")
+        logger.error(f"❌ Ошибка загрузки из MinIO: {str(e)}")
+        raise HTTPException(status_code=404, detail="Видео не найдено")
 
-    return analyze_video(video_path, db, skip)
+    actions = analyze_video_pipeline(local_path)
+
+    for action in actions:
+        if action in ["fighting", "falling", "loitering"]:
+            create_alert(
+                db, AlertCreate(type="suspicious", description=f"Обнаружено: {action}")
+            )
+
+    return {"video": video_filename, "actions": actions}
