@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Конфигурация из переменных окружения
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
-MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "password")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "videos")
 
 # Инициализация клиента MinIO
