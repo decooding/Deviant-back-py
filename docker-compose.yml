@@ -5,27 +5,37 @@ services:
     image: quay.io/minio/minio
     container_name: minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin} # Используем переменные окружения или значения по умолчанию
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
     volumes:
       - minio-data:/data
+    healthcheck: # Опционально, но полезно
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   postgres:
     image: postgres:15
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: video_analysis
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-video_analysis}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck: # Опционально
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-video_analysis}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   prometheus:
     image: prom/prometheus
@@ -33,7 +43,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # Убедитесь, что этот файл существует и настроен
+    # command: # Опционально, если нужны доп. флаги
 
   grafana:
     image: grafana/grafana
@@ -42,6 +53,53 @@ services:
       - "3000:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus # Grafana часто использует Prometheus как источник данных
+
+  # Сервис для вашего FastAPI бэкенда
+  fastapi_app:
+    build:
+      context: . # Указывает, что Dockerfile находится в текущей директории
+      dockerfile: Dockerfile
+    container_name: fastapi_app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload # --reload для разработки
+    volumes:
+      - .:/app # Монтируем текущую директорию в /app для live reload
+    ports:
+      - "8000:8000"
+    environment:
+      # Переменные окружения для FastAPI (примеры)
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-video_analysis}"
+      MINIO_URL: "minio:9000"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-minioadmin}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-minioadmin}"
+      # Добавьте другие необходимые переменные
+    depends_on:
+      postgres:
+        condition: service_healthy # Ждет, пока postgres не будет healthy
+      minio:
+        condition: service_healthy  # Ждет, пока minio не будет healthy
+    restart: unless-stopped
+
+  # Сервис для вашего Streamlit UI
+  streamlit_ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: streamlit_ui
+    command: streamlit run app_ui.py --server.port=8501 --server.address=0.0.0.0
+    volumes:
+      - .:/app # Монтируем текущую директорию в /app для live reload
+      # ВАЖНО: Для доступа к веб-камере из Docker, см. примечание ниже
+      # - /dev/video0:/dev/video0 # Пример для Linux, если нужна веб-камера
+    ports:
+      - "8501:8501"
+    environment:
+      FASTAPI_BACKEND_URL: "http://fastapi_app:8000" # Streamlit будет обращаться к FastAPI по этому адресу
+      # STREAMLIT_SERVER_MAX_UPLOAD_SIZE: 1028 # Пример: увеличить макс. размер загружаемого файла (в МБ)
+    depends_on:
+      - fastapi_app # Streamlit может зависеть от FastAPI, если вызывает его при старте
+    restart: unless-stopped
 
 volumes:
   minio-data:

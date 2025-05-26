@@ -1,18 +1,19 @@
 fastapi
-uvicorn
+uvicorn[standard] # [standard] для поддержки websockets и др.
 sqlalchemy
-pydantic
-python-multipart
-python-dotenv
+psycopg2-binary # Для PostgreSQL
 minio
+streamlit
+opencv-python-headless # headless версия, если не нужна GUI в контейнере
+mediapipe
 ultralytics
-opencv-python-headless
+requests
+Pillow
+python-dotenv 
 prometheus_fastapi_instrumentator
-prometheus_client
-torch
-torchvision
-tqdm
-transformers
-ultralytics==8.0.170
-pandas
-numpy
+streamlit-webrtc 
+tensorflow # или tflite-runtime
+numpy 
+pandas 
+librosa # librosa для возможной передискретизации аудио
+streamlit-audiorec
